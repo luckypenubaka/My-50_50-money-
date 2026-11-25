@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#176b4d">
+<link rel="manifest" href="manifest.webmanifest">
+<title>My 50/50 Money Manager</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#183329;background:#f3f7f4}
+*{box-sizing:border-box}body{margin:0;padding:18px;max-width:650px;margin:auto}
+header{padding:20px;background:#176b4d;color:white;border-radius:18px}
+h1{font-size:1.5rem;margin:0 0 6px}.muted{opacity:.8;font-size:.9rem}
+.card{background:white;padding:16px;border-radius:16px;margin:14px 0;box-shadow:0 2px 10px #1231}
+label{display:block;font-weight:600;margin:10px 0 5px}
+input{width:100%;padding:12px;border:1px solid #ccd8d0;border-radius:10px;font-size:1rem}
+button{border:0;border-radius:10px;padding:12px 16px;background:#176b4d;color:white;font-weight:700;font-size:1rem;margin-top:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#edf5ef;padding:12px;border-radius:12px}
+.stat b{display:block;font-size:1.25rem;margin-top:4px}.row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #e7eee9;padding:10px 0}
+.small{font-size:.85rem;color:#5b6e63}.danger{background:#a33}.notice{padding:10px;background:#fff5d9;border-radius:10px}
+</style>
+</head>
+<body>
+<header><h1>My 50/50 Money Manager</h1><div class="muted">Save 50% of every earning automatically</div></header>
+<section class="card">
+<h2>Add daily income</h2>
+<label>Income description</label><input value="Daily Work" readonly>
+<label>Amount (₹)</label><input id="income" type="number" min="0" step="0.01" placeholder="Enter today's earning">
+<button onclick="addIncome()">Save income</button>
+</section>
+<section class="card">
+<h2>Add an expense</h2>
+<label>Description</label><input id="desc" placeholder="What did you spend on?">
+<label>Amount (₹)</label><input id="amount" type="number" min="0" step="0.01" placeholder="Expense amount">
+<button onclick="addExpense()">Save expense</button>
+</section>
+<section class="card">
+<h2>Monthly overview</h2>
+<label>Month</label><input id="month" type="month">
+<div class="grid" style="margin-top:12px">
+<div class="stat">Income<b id="totalIncome">₹0</b></div>
+<div class="stat">Savings target (50%)<b id="target">₹0</b></div>
+<div class="stat">Expenses<b id="totalExpense">₹0</b></div>
+<div class="stat">Budget left<b id="left">₹0</b></div>
+</div>
+<p id="status" class="notice">Add your income to begin.</p>
+</section>
+<section class="card"><h2>Transactions</h2><div id="history" class="small">No entries yet.</div></section>
+<script>
+const KEY='money-manager-5050-v1';
+let entries=JSON.parse(localStorage.getItem(KEY)||'[]');
+const money=n=>'₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});
+const monthInput=document.getElementById('month');
+monthInput.value=new Date().toISOString().slice(0,7);
+function save(){localStorage.setItem(KEY,JSON.stringify(entries));render()}
+function addIncome(){let v=Number(document.getElementById('income').value);if(!(v>0)){alert('Enter a valid income amount');return}entries.push({id:Date.now(),type:'income',desc:'Daily Work',amount:v,date:new Date().toISOString().slice(0,10)});document.getElementById('income').value='';save()}
+function addExpense(){let d=document.getElementById('desc').value.trim(),v=Number(document.getElementById('amount').value);if(!d||!(v>0)){alert('Enter an expense description and valid amount');return}entries.push({id:Date.now(),type:'expense',desc:d,amount:v,date:new Date().toISOString().slice(0,10)});document.getElementById('desc').value='';document.getElementById('amount').value='';save()}
+function removeEntry(id){if(confirm('Delete this transaction?')){entries=entries.filter(x=>x.id!==id);save()}}
+function render(){let m=monthInput.value,items=entries.filter(x=>x.date.startsWith(m)),inc=items.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0),exp=items.filter(x=>x.type==='expense').reduce((s,x)=>s+x.amount,0),target=inc*.5,left=target-exp;
+document.getElementById('totalIncome').textContent=money(inc);document.getElementById('target').textContent=money(target);document.getElementById('totalExpense').textContent=money(exp);document.getElementById('left').textContent=money(left);
+document.getElementById('status').textContent=inc===0?'Add your income to begin.':left>=0?'Great! Your expenses are within the 50% spending budget.':'Your expenses are over the 50% spending budget by '+money(-left)+'.';
+document.getElementById('history').innerHTML=items.length?items.slice().reverse().map(x=>`<div class="row"><div><b>${x.desc.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}</b><div class="small">${x.date} · ${x.type}</div></div><div>${money(x.amount)} <button class="danger" style="padding:5px 8px;margin:0" onclick="removeEntry(${x.id})">×</button></div></div>`).join(''):'No entries for this month.'}
+}
+monthInput.addEventListener('change',render);render();
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'))}
+</script>
+</body></html>
